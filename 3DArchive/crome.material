@@ -1,0 +1,14 @@
+material Examples/Chrome
+{
+	technique
+	{
+		pass
+		{
+			texture_unit
+			{
+				texture Chrome.jpg
+				env_map spherical
+			}
+		}
+	}
+}
