@@ -1,4 +1,7 @@
 # 3D-Daten nicht ins Repo
+3DArchive/
+img/
+temp/
 3D-Daten/
 *.igs
 *.iges
