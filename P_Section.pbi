@@ -117,6 +117,25 @@ Procedure Debug_P_Section_Basic()
   Debug "-------------------------"
 EndProcedure
 
+Procedure Debug_P_Section_Type142()
+  Protected p.s
+
+  Debug "---- P-Section: Type 142 ----"
+
+  ForEach PTable()
+    p = PTable()\Text
+
+    ; Prüfe ob die Zeile mit "142," beginnt
+    If Left(p, 4) = "142,"
+      Debug "PSeq=" + Str(PTable()\Seq) + "  DEPtr=" + Str(PTable()\DEPtr) +
+            "  Text='" + p + "'"
+    EndIf
+  Next
+
+  Debug "--------------------------------"
+EndProcedure
+
+
 ;---------------------------------------------------
 ; Test: erste Entity vom Typ 110 und Parameter parsen
 ;---------------------------------------------------
@@ -172,8 +191,8 @@ Procedure Debug_First_Type110_Params()
 EndProcedure
 
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 172
-; FirstLine = 125
+; CursorPosition = 111
+; FirstLine = 91
 ; Folding = -
 ; EnableXP
 ; DPIAware

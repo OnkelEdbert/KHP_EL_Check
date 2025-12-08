@@ -126,7 +126,7 @@ EndProcedure
 
 ;--- Liste aller Type-110-Linien aus dem Directory aufbauen ---
 
-Procedure Build_Line110_List()
+Procedure X_Build_Line110_List()
   Protected tmpLine.IGES_Line110
   
   ClearList(Line110_List())
@@ -137,6 +137,26 @@ Procedure Build_Line110_List()
         AddElement(Line110_List())
         Line110_List() = tmpLine
       EndIf
+    EndIf
+  Next
+EndProcedure
+
+;--- Liste aller Type-110-Linien aus dem Directory aufbauen ---
+Procedure Build_Line110_List()
+  Protected tmpLine.IGES_Line110
+  Protected statusStr.s
+  Protected blank.i, subord.i, useFlag.i, hier.i
+  
+  ClearList(Line110_List())
+  
+  ForEach DirList()
+    If DirList()\Type = 110
+      
+      If IGES_ParseLine110(@DirList(), @tmpLine)
+        AddElement(Line110_List())
+        Line110_List() = tmpLine
+      EndIf
+      
     EndIf
   Next
 EndProcedure
@@ -167,7 +187,8 @@ Procedure Debug_Line110_List(MaxLines.i = 5)
 EndProcedure
 
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 62
-; Folding = w
+; CursorPosition = 152
+; FirstLine = 41
+; Folding = 9
 ; EnableXP
 ; DPIAware
