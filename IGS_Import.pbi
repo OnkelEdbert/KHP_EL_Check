@@ -1,10 +1,4 @@
-﻿XIncludeFile "S_Section.pbi"
-XIncludeFile "G_Section.pbi"
-XIncludeFile "D_Section.pbi"
-XIncludeFile "P_Section.pbi"
-XIncludeFile "T_Section.pbi"
-
-Global NewList S_Section.s()
+﻿Global NewList S_Section.s()
 Global NewList G_Section.s()
 Global NewList D_Section.s()
 Global NewList P_Section.s()
@@ -42,13 +36,20 @@ Procedure LoadIGES_Lines(Filename.s)
     EndSelect
   Wend
   CloseFile(IGSFile)
-   
+  
+  ProcedureReturn #True
+  
 EndProcedure
 
-
+XIncludeFile "S_Section.pbi"
+XIncludeFile "G_Section.pbi"
+XIncludeFile "D_Section.pbi"
+XIncludeFile "P_Section.pbi"
+XIncludeFile "T_Section.pbi"
 
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 24
+; CursorPosition = 48
+; FirstLine = 1
 ; Folding = -
 ; EnableXP
 ; DPIAware
