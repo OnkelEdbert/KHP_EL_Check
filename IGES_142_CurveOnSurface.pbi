@@ -446,8 +446,104 @@ Procedure Debug_SurfaceEdges110()
   Debug "-----------------------------------------"
 EndProcedure
 
+;---------------------------------------------------
+; Type 100 (Circular Arc) - Punktliste samplen
+;  Param-Schema:
+;    params(0) = 100
+;    params(1) = ZT
+;    params(2) = X1 (Center)
+;    params(3) = Y1 (Center)
+;    params(4) = X2 (Start)
+;    params(5) = Y2 (Start)
+;    params(6) = X3 (End)
+;    params(7) = Y3 (End)
+;  -> schreibt eine Liste von 3D-Punkten in outPts()
+;---------------------------------------------------
+Procedure.i IGES_100_SamplePointsForDE(de.i, List outPts.IGES_Point3D())
+  Protected *dir.D_Sec
+  Protected combined.s
+  Protected paramCount.i
+  Protected i.i, steps.i
+  Protected zt.d, cx.d, cy.d, sx.d, sy.d, ex.d, ey.d
+  Protected r.d, dx.d, dy.d
+  Protected aStart.d, aEnd.d, aSpan.d, t.d, x.d, y.d
 
+  Dim params.s(0)
+  ClearList(outPts())
 
+  *dir = IGES_FindDirBySeq(de)
+  If *dir = 0
+    Debug "WARN: IGES_100_SamplePointsForDE: DE " + Str(de) + " nicht im Directory gefunden."
+    ProcedureReturn #False
+  EndIf
+
+  If *dir\Type <> 100
+    Debug "WARN: IGES_100_SamplePointsForDE: DE " + Str(de) + " ist Typ " + Str(*dir\Type) + " (nicht 100)."
+    ProcedureReturn #False
+  EndIf
+
+  combined = IGES_GetParamStringForDir(*dir)
+  If combined = ""
+    Debug "WARN: IGES_100_SamplePointsForDE: DE " + Str(de) + " kein ParamString."
+    ProcedureReturn #False
+  EndIf
+
+  paramCount = IGES_SplitParams(combined, GlobalG\ParamDelim, GlobalG\RecordDelim, params())
+  If paramCount < 8
+    Debug "WARN: IGES_100_SamplePointsForDE: DE " + Str(de) + " hat nur " + Str(paramCount) + " Parameter."
+    ProcedureReturn #False
+  EndIf
+
+  ; Optional: erster Wert pruefen
+  If Val(params(0)) <> 100
+    Debug "WARN: IGES_100_SamplePointsForDE: Param[0] != 100 bei DE " + Str(de)
+  EndIf
+
+  zt = ValD(params(1))
+  cx = ValD(params(2))
+  cy = ValD(params(3))
+  sx = ValD(params(4))
+  sy = ValD(params(5))
+  ex = ValD(params(6))
+  ey = ValD(params(7))
+
+  ; Radius aus Startpunkt
+  dx = sx - cx : dy = sy - cy
+  r  = Sqr(dx * dx + dy * dy)
+  If r <= 0.0
+    Debug "WARN: IGES_100_SamplePointsForDE: DE " + Str(de) + " Radius=0."
+    ProcedureReturn #False
+  EndIf
+
+  ; Winkel Start/End gegen den Uhrzeigersinn
+  aStart = ATan2(sy - cy, sx - cx)
+  aEnd   = ATan2(ey - cy, ex - cx)
+
+  If aEnd <= aStart
+    aEnd + 2.0 * #PI
+  EndIf
+
+  aSpan = aEnd - aStart
+
+  ; Segmente: ca. 10 Grad pro Segment, mind. 4
+  steps = Int(aSpan / (#PI / 18.0)) + 1
+  If steps < 4
+    steps = 4
+  EndIf
+
+  For i = 0 To steps
+    t = aStart + aSpan * i / steps
+    x = cx + r * Cos(t)
+    y = cy + r * Sin(t)
+
+    AddElement(outPts())
+    outPts()\x = x
+    outPts()\y = y
+    outPts()\z = zt
+  Next
+
+  ProcedureReturn ListSize(outPts())
+EndProcedure
 
 ;---------------------------------------------------
 ; Type 110 (Line) - Punkte aus Param-String holen
@@ -508,13 +604,13 @@ Procedure.i IGES_110_GetPointsForDE(de.i, *p1.IGES_Point3D, *p2.IGES_Point3D)
 
   ProcedureReturn #True
 EndProcedure
-
+    
 ;---------------------------------------------------
 ; Aus SurfaceEdges110 -> konkrete Punktliste
 ;   - erwartet: SurfaceEdges110 bereits aufgebaut
 ;   - fuellt:   SurfaceEdgePoints (2 Punkte pro Edge)
 ;---------------------------------------------------
-Procedure Build_SurfaceEdgePoints()
+Procedure X_Build_SurfaceEdgePoints()
   Protected p1.IGES_Point3D
   Protected p2.IGES_Point3D
   Protected segIndex.i
@@ -575,6 +671,136 @@ Procedure Build_SurfaceEdgePoints()
   Next
 EndProcedure
 
+Procedure Build_SurfaceEdgePoints()
+  Protected p1.IGES_Point3D
+  Protected p2.IGES_Point3D
+  Protected segIndex.i
+  Protected lastKey.s, key.s
+
+  Protected *dir.D_Sec
+  Protected lastX.d, lastY.d, lastZ.d
+  Protected firstPointSet.i
+
+  ClearList(SurfaceEdgePoints())
+
+  If ListSize(SurfaceEdges110()) = 0
+    ProcedureReturn
+  EndIf
+
+  ResetList(SurfaceEdges110())
+  ForEach SurfaceEdges110()
+
+    key = Str(SurfaceEdges110()\SurfDE) + "_" + Str(SurfaceEdges110()\Curve142Seq)
+    If key <> lastKey
+      segIndex = 0
+      lastKey  = key
+    Else
+      segIndex + 1
+    EndIf
+
+    *dir = IGES_FindDirBySeq(SurfaceEdges110()\CurveDE)
+    If *dir = 0
+      Continue
+    EndIf
+
+    Select *dir\Type
+
+      ;-----------------------------------
+      ; 110 = Gerade Linie (wie bisher)
+      ;-----------------------------------
+      Case 110
+        If IGES_110_GetPointsForDE(SurfaceEdges110()\CurveDE, @p1, @p2)
+
+          ; Startpunkt
+          AddElement(SurfaceEdgePoints())
+          SurfaceEdgePoints()\SurfDE        = SurfaceEdges110()\SurfDE
+          SurfaceEdgePoints()\Curve142Seq   = SurfaceEdges110()\Curve142Seq
+          SurfaceEdgePoints()\CurveDE       = SurfaceEdges110()\CurveDE
+          SurfaceEdgePoints()\SegmentIndex  = segIndex
+          SurfaceEdgePoints()\PointIndex    = 0
+          SurfaceEdgePoints()\x             = p1\x
+          SurfaceEdgePoints()\y             = p1\y
+          SurfaceEdgePoints()\z             = p1\z
+          SurfaceEdgePoints()\IsOuter       = SurfaceEdges110()\IsOuter
+
+          ; Endpunkt
+          AddElement(SurfaceEdgePoints())
+          SurfaceEdgePoints()\SurfDE        = SurfaceEdges110()\SurfDE
+          SurfaceEdgePoints()\Curve142Seq   = SurfaceEdges110()\Curve142Seq
+          SurfaceEdgePoints()\CurveDE       = SurfaceEdges110()\CurveDE
+          SurfaceEdgePoints()\SegmentIndex  = segIndex
+          SurfaceEdgePoints()\PointIndex    = 1
+          SurfaceEdgePoints()\x             = p2\x
+          SurfaceEdgePoints()\y             = p2\y
+          SurfaceEdgePoints()\z             = p2\z
+          SurfaceEdgePoints()\IsOuter       = SurfaceEdges110()\IsOuter
+
+        EndIf
+
+      ;-----------------------------------
+      ; 100 = Circular Arc -> Polyline
+      ;-----------------------------------
+      Case 100
+        Protected NewList arcPts.IGES_Point3D()
+
+        If IGES_100_SamplePointsForDE(SurfaceEdges110()\CurveDE, arcPts())
+          firstPointSet = #False
+
+          ResetList(arcPts())
+          While NextElement(arcPts())
+            If firstPointSet = #False
+              ; ersten Punkt merken, noch kein Segment
+              lastX = arcPts()\x
+              lastY = arcPts()\y
+              lastZ = arcPts()\z
+              firstPointSet = #True
+            Else
+              ; Segment von last -> aktueller Punkt
+              p1\x = lastX : p1\y = lastY : p1\z = lastZ
+              p2\x = arcPts()\x
+              p2\y = arcPts()\y
+              p2\z = arcPts()\z
+
+              ; Startpunkt
+              AddElement(SurfaceEdgePoints())
+              SurfaceEdgePoints()\SurfDE        = SurfaceEdges110()\SurfDE
+              SurfaceEdgePoints()\Curve142Seq   = SurfaceEdges110()\Curve142Seq
+              SurfaceEdgePoints()\CurveDE       = SurfaceEdges110()\CurveDE
+              SurfaceEdgePoints()\SegmentIndex  = segIndex
+              SurfaceEdgePoints()\PointIndex    = 0
+              SurfaceEdgePoints()\x             = p1\x
+              SurfaceEdgePoints()\y             = p1\y
+              SurfaceEdgePoints()\z             = p1\z
+              SurfaceEdgePoints()\IsOuter       = SurfaceEdges110()\IsOuter
+
+              ; Endpunkt
+              AddElement(SurfaceEdgePoints())
+              SurfaceEdgePoints()\SurfDE        = SurfaceEdges110()\SurfDE
+              SurfaceEdgePoints()\Curve142Seq   = SurfaceEdges110()\Curve142Seq
+              SurfaceEdgePoints()\CurveDE       = SurfaceEdges110()\CurveDE
+              SurfaceEdgePoints()\SegmentIndex  = segIndex
+              SurfaceEdgePoints()\PointIndex    = 1
+              SurfaceEdgePoints()\x             = p2\x
+              SurfaceEdgePoints()\y             = p2\y
+              SurfaceEdgePoints()\z             = p2\z
+              SurfaceEdgePoints()\IsOuter       = SurfaceEdges110()\IsOuter
+
+              ; aktuellen Punkt als "last" merken
+              lastX = p2\x
+              lastY = p2\y
+              lastZ = p2\z
+            EndIf
+          Wend
+        EndIf
+
+      Default
+        ; z.B. spaeter andere Kurventypen
+        ; Debug "INFO: Build_SurfaceEdgePoints: CurveDE=" + Str(SurfaceEdges110()\CurveDE) + " Typ " + Str(*dir\Type) + " (noch nicht umgesetzt)"
+    EndSelect
+
+  Next
+EndProcedure
+
 Procedure Debug_SurfaceEdgePoints()
   Debug "---- SurfaceEdgePoints (aus 110) ----"
   Debug "Anzahl: " + Str(ListSize(SurfaceEdgePoints()))
@@ -616,13 +842,14 @@ Procedure Get_SurfaceEdgePointsForSurface(surfDE.i, isOuter.i, List outPts.IGES_
 EndProcedure
 
 
+
 ; IDE Options = PureBasic 6.20 (Windows - x64)
 ; EnableXP
 ; DPIAware
 
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 617
-; FirstLine = 120
-; Folding = gA+
+; CursorPosition = 546
+; FirstLine = 122
+; Folding = gAk
 ; EnableXP
 ; DPIAware
