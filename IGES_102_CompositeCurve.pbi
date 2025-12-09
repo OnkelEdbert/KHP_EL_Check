@@ -16,7 +16,7 @@ Global NewList Curve102_Segments.Curve102Segment()
 Procedure Parse_IGES_102(*dir.D_Sec)
   Protected combined.s
   Protected count.i, numSeg.i, i.i
-  Dim params.s(0)
+  Protected Dim params.s(0)
 
   If *dir = 0 Or *dir\Type <> 102
     ProcedureReturn #False
@@ -61,7 +61,6 @@ Procedure Build_102_List()
   Next
 EndProcedure
 
-
 Procedure Debug_102_List()
   Debug "---- Composite Curves (Type 102) ----"
 
@@ -80,11 +79,8 @@ Procedure Debug_102_List()
   Debug "-------------------------------------"
 EndProcedure
 
-
-
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 13
-; FirstLine = 36
-; Folding = -
+; CursorPosition = 80
+; Folding = 5
 ; EnableXP
 ; DPIAware
