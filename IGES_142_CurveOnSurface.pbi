@@ -339,7 +339,6 @@ Procedure Debug_144_With_142()
   Debug "--------------------------------------------------------"
 EndProcedure
 
-
 ;---------------------------------------------------
 ; Aus 144 + 142 -> SurfaceEdges110 bauen
 ;---------------------------------------------------
@@ -458,6 +457,8 @@ EndProcedure
 ;    params(6) = X3 (End)
 ;    params(7) = Y3 (End)
 ;  -> schreibt eine Liste von 3D-Punkten in outPts()
+;     und wendet ggf. die Transformationsmatrix (124)
+;     aus dem Directory-Eintrag an.
 ;---------------------------------------------------
 Procedure.i IGES_100_SamplePointsForDE(de.i, List outPts.IGES_Point3D())
   Protected *dir.D_Sec
@@ -467,6 +468,8 @@ Procedure.i IGES_100_SamplePointsForDE(de.i, List outPts.IGES_Point3D())
   Protected zt.d, cx.d, cy.d, sx.d, sy.d, ex.d, ey.d
   Protected r.d, dx.d, dy.d
   Protected aStart.d, aEnd.d, aSpan.d, t.d, x.d, y.d
+  Protected transSeq.i
+  Protected pt.IGES_Point3D
 
   Dim params.s(0)
   ClearList(outPts())
@@ -531,19 +534,34 @@ Procedure.i IGES_100_SamplePointsForDE(de.i, List outPts.IGES_Point3D())
     steps = 4
   EndIf
 
+  ; Transformations-SeqNo (Type 124) aus Directory
+  transSeq = *dir\TransMatrixPtr
+
   For i = 0 To steps
     t = aStart + aSpan * i / steps
     x = cx + r * Cos(t)
     y = cy + r * Sin(t)
 
+    ; Lokaler Punkt (im Kreis-KS)
+    pt\x = x
+    pt\y = y
+    pt\z = zt
+
+    ; Falls eine Transformationsmatrix (124) zugeordnet ist:
+    If transSeq > 0
+      IGES_ApplyTransformToPoint(@pt, transSeq)
+    EndIf
+
+    ; Transformierten Punkt in die Ausgabeliste schreiben
     AddElement(outPts())
-    outPts()\x = x
-    outPts()\y = y
-    outPts()\z = zt
+    outPts()\x = pt\x
+    outPts()\y = pt\y
+    outPts()\z = pt\z
   Next
 
   ProcedureReturn ListSize(outPts())
 EndProcedure
+
 
 ;---------------------------------------------------
 ; Type 110 (Line) - Punkte aus Param-String holen
@@ -604,7 +622,7 @@ Procedure.i IGES_110_GetPointsForDE(de.i, *p1.IGES_Point3D, *p2.IGES_Point3D)
 
   ProcedureReturn #True
 EndProcedure
-    
+
 ;---------------------------------------------------
 ; Aus SurfaceEdges110 -> konkrete Punktliste
 ;   - erwartet: SurfaceEdges110 bereits aufgebaut
@@ -848,8 +866,7 @@ EndProcedure
 ; DPIAware
 
 ; IDE Options = PureBasic 6.20 (Windows - x64)
-; CursorPosition = 546
-; FirstLine = 122
+; CursorPosition = 446
 ; Folding = gAk
 ; EnableXP
 ; DPIAware
